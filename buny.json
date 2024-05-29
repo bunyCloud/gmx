@@ -1,0 +1,10 @@
+{
+    "name": "BUNY: BOT*",
+    "author": "R.J. McMahon",
+    "version": "1.0.0",
+    "license": "MIT",
+    "exchange": "GMX",
+    "network": "Avalance",
+    "description": "Perpetual Exchange Bot v8"
+  }
+  
