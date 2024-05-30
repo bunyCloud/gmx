@@ -64,7 +64,8 @@ async function closeAvaxLong(
 
     
     //const acceptablePrice = await handleAcceptablePrice();
-    const wavaxPrice = await fetchWavaxPrice();
+  
+    const wavaxPrice = await fetchMaxPrice(wavax);
     console.log(`WAVAX price: ${wavaxPrice}`);
 
     // contract call

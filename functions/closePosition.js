@@ -15,57 +15,52 @@ const {
 } = require("../config");
 
 const { calculateSize } = require("../modules/calculateSizeModule");
-const { handleDynamicPrice } = require("../modules/dynamicFetchPrice");
+const { fetchMaxPrice } = require("../modules/fetchMaxPrice");
+const { fetchMinPrice } = require("../modules/fetchMinPrice");
 
 require("dotenv").config();
 app.use(express.json());
 app.use(cors());
 const nativeTokenAddress = ethers.constants.AddressZero;
 
-
 const collateralToken = [usdc];
 
-async function handleClosePosition(
-  indexToken,
-  sizeDelta,
-  amountIn,
-  isLong,
-) {
-  
-// Format increase size
-
-// Check wavax balance, check avax balance before submitting. 
-
-  try {   
-    
-    console.log("starting decrease transaction...");
-    
+async function handleClosePosition(indexToken, sizeDelta, amountIn, isLong) {
+  try {
+    console.log("Starting decrease transaction...");
 
     const contract = new ethers.Contract(
       PositionRouter.address,
       PositionRouter.abi,
-      wallet,
+      wallet
     );
 
-// collateral in  
-const _amountIn = amountIn;
-// position size
-const positionSize = sizeDelta;
+    // Collateral in
+    const _amountIn = amountIn;
+    // Position size
+    const positionSize = sizeDelta;
 
-    // sell price
-    const acceptablePrice = await handleDynamicPrice(indexToken);
+    // Format amount and size
+    const formatAmount = calculateSize(_amountIn);
+    const formatSize = calculateSize(positionSize);
 
-    // contract call
-    const tx = await contract.createDecreasePosition(
-      // pass in props
+    let acceptablePrice = 0;
+
+    if (isLong) {
+      // Fetch max price for long positions
+      acceptablePrice = await fetchMaxPrice(indexToken);
+    } else {
+      // Fetch min price for short positions
+      acceptablePrice = await fetchMinPrice(indexToken);
+    }
+
+    // Estimate gas
+    const gasEstimate = await contract.estimateGas.createDecreasePosition(
       collateralToken,
       indexToken,
-      // amount in
-      _amountIn,
-      //decrease size
-      positionSize,
+      formatAmount,
+      formatSize,
       isLong,
-      // 
       accountAddress,
       acceptablePrice,
       minOut,
@@ -73,27 +68,40 @@ const positionSize = sizeDelta;
       false,
       nativeTokenAddress,
       {
-        gasLimit: ethers.BigNumber.from(550000),
-        value: executionFee
+        value: executionFee,
       }
     );
-    const receipt = await tx.wait();
-    console.log(
-      `Close position submitted successfully: ${receipt.transactionHash}`,
+
+    console.log(`Estimated gas limit: ${gasEstimate.toString()}`);
+
+    // Contract call with estimated gas
+    const tx = await contract.createDecreasePosition(
+      collateralToken,
+      indexToken,
+      formatAmount,
+      formatSize,
+      isLong,
+      accountAddress,
+      acceptablePrice,
+      minOut,
+      executionFee,
+      false,
+      nativeTokenAddress,
+      {
+        gasLimit: gasEstimate,
+        value: executionFee,
+      }
     );
 
-    
-    
+    const receipt = await tx.wait();
+    console.log(`Close position submitted successfully: ${receipt.transactionHash}`);
   } catch (error) {
     console.error("Error closing position", error);
     throw error;
   }
 }
 
-
 // Export the functions
 module.exports = {
-  handleClosePosition
+  handleClosePosition,
 };
-
-//3425.86
